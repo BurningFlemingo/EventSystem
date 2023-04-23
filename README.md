@@ -1,6 +1,15 @@
 # Single Header EventSystem
 
-# Example usage
+## Credit
+these posts / articles were used to help me make this.
+
+https://austinmorlan.com/posts/entity_component_system/
+
+https://codereview.stackexchange.com/questions/252884/c-event-system-game-engine
+
+https://codereview.stackexchange.com/questions/79211/ecs-event-messaging-implementation
+
+## Example usage
 
     #include <iostream>
     #include "EventManager.h"
