@@ -5,7 +5,7 @@
     int main() {
 	    EventManager em;
 
-	    int level = 0;
+	    int level{ 0 };
 
 	    auto levelUpHandle = em.subscribe<LevelUp>(&handleLevelUp);
 	    auto levelDownHandle = em.subscribe<LevelDown>(&handleLevelDown);
