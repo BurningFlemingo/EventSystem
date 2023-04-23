@@ -15,10 +15,12 @@ public:
 template<typename EventType>
 class CallbackContainer : public ICallbackContainer {
 public:
+	template<class EventType>
+	using CallbackType = std::function<void(const EventType&)>;
 	using SubscriberHandle = size_t;
 
-	template<typename Function>
-	SubscriberHandle addCallback(Function callback);
+	SubscriberHandle addCallback(CallbackType<EventType> callback);
+
 	void removeCallback(SubscriberHandle handle);
 
 	template<typename EventType>
@@ -32,7 +34,7 @@ public:
 	void callSaved() const override;
 
 private:
-	std::vector<std::function<void(const EventType&)>> m_Callbacks{};
+	std::vector<CallbackType<EventType>> m_Callbacks{};
 	std::vector<SubscriberHandle> m_FreeHandles{};
 	std::unordered_map<SubscriberHandle, size_t> m_HandleToIndex{};
 	std::unordered_map<size_t, SubscriberHandle> m_IndexToHandle{};
@@ -41,8 +43,7 @@ private:
 };
 
 template<typename EventType>
-template<typename Function>
-auto CallbackContainer<EventType>::addCallback(Function callback) -> SubscriberHandle {
+auto CallbackContainer<EventType>::addCallback(CallbackType<EventType> callback) -> SubscriberHandle {
 	SubscriberHandle handle;
 	size_t newIndex = m_Callbacks.size();
 
@@ -90,7 +91,6 @@ void CallbackContainer<EventType>::save(const EventType& event) {
 	m_SavedEvent = event;
 }
 
-
 template<typename EventType>
 void CallbackContainer<EventType>::callSaved() const {
 	for (auto& callback : m_Callbacks) {
@@ -102,6 +102,9 @@ class EventManager {
 public:
 	template<typename EventType, typename Function>
 	typename CallbackContainer<EventType>::SubscriberHandle subscribe(Function callback);
+
+	template<typename EventType, typename Method, typename Instance>
+	typename CallbackContainer<EventType>::SubscriberHandle subscribe(Method callback, Instance instance);
 
 	template<typename EventType>
 	void unsubscribe(typename CallbackContainer<EventType>::SubscriberHandle handle);
@@ -129,6 +132,12 @@ private:
 template<typename EventType, typename Function>
 inline typename CallbackContainer<EventType>::SubscriberHandle EventManager::subscribe(Function callback) {
 	return s_Callbacks<EventType>.addCallback(callback);
+}
+
+template<typename EventType, typename Method, typename Instance>
+typename CallbackContainer<EventType>::SubscriberHandle EventManager::subscribe(Method callback, Instance instance) {
+	std::function<void(const EventType&)> function{ std::bind(callback, instance, std::placeholders::_1) };
+	return s_Callbacks<EventType>.addCallback(std::move(function));
 }
 
 template<typename EventType>
