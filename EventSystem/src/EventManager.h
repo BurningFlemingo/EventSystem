@@ -15,15 +15,13 @@ public:
 template<typename EventType>
 class CallbackContainer : public ICallbackContainer {
 public:
-	template<class EventType>
 	using CallbackType = std::function<void(const EventType&)>;
 	using SubscriberHandle = size_t;
 
-	SubscriberHandle addCallback(CallbackType<EventType> callback);
+	SubscriberHandle addCallback(CallbackType callback);
 
 	void removeCallback(SubscriberHandle handle);
 
-	template<typename EventType>
 	void operator() (const EventType& event) const {
 		for (auto& callback : m_Callbacks) {
 			callback(event);
@@ -34,7 +32,7 @@ public:
 	void callSaved() const override;
 
 private:
-	std::vector<CallbackType<EventType>> m_Callbacks{};
+	std::vector<CallbackType> m_Callbacks{};
 	std::vector<SubscriberHandle> m_FreeHandles{};
 	std::unordered_map<SubscriberHandle, size_t> m_HandleToIndex{};
 	std::unordered_map<size_t, SubscriberHandle> m_IndexToHandle{};
@@ -43,7 +41,7 @@ private:
 };
 
 template<typename EventType>
-auto CallbackContainer<EventType>::addCallback(CallbackType<EventType> callback) -> SubscriberHandle {
+auto CallbackContainer<EventType>::addCallback(CallbackType callback) -> SubscriberHandle {
 	SubscriberHandle handle;
 	size_t newIndex = m_Callbacks.size();
 
@@ -170,7 +168,7 @@ void EventManager::publishBus(EventType&& event) {
 }
 
 
-void EventManager::pollEvents() {
+inline void EventManager::pollEvents() {
 	for (const auto& callback : m_EventBus) {
 		callback->callSaved();
 	}
