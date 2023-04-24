@@ -30,6 +30,7 @@ https://codereview.stackexchange.com/questions/79211/ecs-event-messaging-impleme
 * requires ```&function```
 * requires EventType, and this event type must be a POD struct
 * requires function to be void, and have const refrence POD as its only parameter i.e. ```void function(const POD& pod);```
+* requires function parameter type to be the same as the EventType called with subscribe
 
 
 ### publish
