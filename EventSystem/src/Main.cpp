@@ -38,8 +38,8 @@ int main() {
 	int level{ 0 };
 
 	auto levelUpHandle = em.subscribe<LevelUp>(&handleLevelUp);
-	auto levelDownHandle = em.subscribe<LevelDown>(&handleLevelDown);
-	auto levelDownConsiquenceHandle = em.subscribe<LevelDown>(&levelDownConsiquence);
+	em.subscribe<LevelDown>(&handleLevelDown);
+	em.subscribe<LevelDown>(&levelDownConsiquence);
 	DownLevelClass DLC(&em);
 
 	level--;
