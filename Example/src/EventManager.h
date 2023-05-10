@@ -15,6 +15,8 @@ public:
 template<typename EventType>
 class CallbackContainer : public ICallbackContainer {
 public:
+    CallbackContainer();
+
 	using CallbackType = std::function<void(const EventType&)>;
 	using SubscriberHandle = size_t;
 
@@ -23,8 +25,8 @@ public:
 	void removeCallback(SubscriberHandle handle);
 
 	void operator() (const EventType& event) const {
-		for (auto& callback : m_Callbacks) {
-			callback(event);
+		for (int i = 0; i < m_NumberOfCallbacks; i++) {
+			m_Callbacks[i](event);
 		}
 	}
 
@@ -33,21 +35,29 @@ public:
 private:
     void clearSaved() const;
 
-	std::vector<CallbackType> m_Callbacks{};
-	std::vector<SubscriberHandle> m_FreeHandles{};
-    std::vector<size_t> m_HandleToIndex{};
-    std::vector<SubscriberHandle> m_IndexToHandle{};
+	std::vector<CallbackType> m_Callbacks;
+	std::vector<SubscriberHandle> m_FreeHandles;
+    std::vector<size_t> m_HandleToIndex;
+    std::vector<SubscriberHandle> m_IndexToHandle;
 
     mutable std::vector<EventType> m_SavedEvents{};
+    mutable unsigned int m_NumberOfCallbacks{ 0 };
 };
+
+template<typename EventType>
+inline CallbackContainer<EventType>::CallbackContainer() {
+    m_Callbacks.assign(10, 0);
+    m_HandleToIndex.assign(10, 0);
+    m_IndexToHandle.assign(10, 0);
+}
 
 template<typename EventType>
 inline auto CallbackContainer<EventType>::addCallback(CallbackType callback) -> SubscriberHandle {
 	SubscriberHandle handle;
-	size_t newIndex = m_Callbacks.size();
+	size_t newIndex = m_NumberOfCallbacks;
 
 	if (m_FreeHandles.empty()) {
-		handle = m_Callbacks.size();
+		handle = newIndex;
 	}
 	else {
 		handle = m_FreeHandles.back();
@@ -65,9 +75,11 @@ inline auto CallbackContainer<EventType>::addCallback(CallbackType callback) -> 
 	m_IndexToHandle[newIndex] = handle;
 
 	if (newIndex >= m_Callbacks.size()) {
-		m_Callbacks.resize(newIndex + 1);
+		m_Callbacks.resize(newIndex * 2 + 1);
 	}
 	m_Callbacks[newIndex] = callback;
+    m_NumberOfCallbacks++;
+
 	return handle;
 }
 
@@ -91,6 +103,8 @@ inline void CallbackContainer<EventType>::removeCallback(SubscriberHandle handle
 	m_HandleToIndex[handle] = -1;
 	m_IndexToHandle[indexOfLastElement] = -1;
 	m_FreeHandles.emplace_back(handle);
+
+    m_NumberOfCallbacks--;
 }
 
 template<typename EventType>
@@ -103,9 +117,9 @@ inline void CallbackContainer<EventType>::callSaved() const {
     if (m_SavedEvents.size() == 0) {
         return;
     }
-	for (auto& callback : m_Callbacks) {
+	for (int i{0}; i < m_NumberOfCallbacks; i++) {
         for (const auto& event : m_SavedEvents) {
-		    callback(event);
+		    m_Callbacks[i](event);
         }
 	}
     clearSaved();
