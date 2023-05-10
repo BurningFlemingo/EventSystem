@@ -20,6 +20,10 @@ https://codereview.stackexchange.com/questions/79211/ecs-event-messaging-impleme
 * fast, contiguoues event dispatching
 * single header
 
+## Requirements
+
+* c++ 17 or older
+
 ## Features
 
 ### subscribe
