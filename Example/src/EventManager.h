@@ -10,7 +10,6 @@ public:
 	virtual ~ICallbackContainer() = default;
 
 	virtual void callSaved() const = 0;
-	virtual void clearSaved() = 0;
 };
 
 template<typename EventType>
@@ -31,14 +30,15 @@ public:
 
 	void save(const EventType& event);
 	void callSaved() const override;
-    void clearSaved() override;
 private:
+    void clearSaved() const;
+
 	std::vector<CallbackType> m_Callbacks{};
 	std::vector<SubscriberHandle> m_FreeHandles{};
     std::vector<size_t> m_HandleToIndex{};
     std::vector<SubscriberHandle> m_IndexToHandle{};
 
-    std::vector<EventType> m_SavedEvents{};
+    mutable std::vector<EventType> m_SavedEvents{};
 };
 
 template<typename EventType>
@@ -108,10 +108,11 @@ inline void CallbackContainer<EventType>::callSaved() const {
 		    callback(event);
         }
 	}
+    clearSaved();
 }
 
 template<typename EventType>
-inline void CallbackContainer<EventType>::clearSaved() {
+inline void CallbackContainer<EventType>::clearSaved() const {
     m_SavedEvents.clear();
 }
 
@@ -189,7 +190,6 @@ void EventManager::publishBus(EventType&& event) {
 inline void EventManager::pollEvents() {
 	for (auto& callback : m_EventBus) {
 		callback->callSaved();
-        callback->clearSaved();
 	}
 
 	m_EventBus.clear();
