@@ -33,10 +33,12 @@ private:
 };
 
 int main() {
+    // EventManager instance only manages busses, subscribed functions are static
 	EventManager em;
 
 	int level{ 0 };
 
+    // ways of subscribing
 	auto levelUpHandle = em.subscribe<LevelUp>(&handleLevelUp);
 	em.subscribe<LevelDown>(&handleLevelDown);
 	em.subscribe<LevelDown>(&levelDownConsiquence);
@@ -46,8 +48,14 @@ int main() {
 	em.publishBlocking<LevelDown>({ level });
 	level++;
 	em.publishBus<LevelUp>({ level });
+    level++;
 	em.publishBlocking<LevelUp>({ level });
+    level++;
+    em.publishBus<LevelUp>({ level });
 	em.pollEvents();
+    // publishing to the same event to the bus will not override, instead it will stack
 
 	em.unsubscribe<LevelUp>(levelUpHandle);
+    // will not fire
+    em.publishBlocking<LevelUp>({ level });
 }

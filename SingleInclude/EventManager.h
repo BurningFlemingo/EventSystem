@@ -10,6 +10,7 @@ public:
 	virtual ~ICallbackContainer() = default;
 
 	virtual void callSaved() const = 0;
+	virtual void clearSaved() = 0;
 };
 
 template<typename EventType>
@@ -30,18 +31,18 @@ public:
 
 	void save(const EventType& event);
 	void callSaved() const override;
-
+    void clearSaved() override;
 private:
 	std::vector<CallbackType> m_Callbacks{};
 	std::vector<SubscriberHandle> m_FreeHandles{};
-	std::unordered_map<SubscriberHandle, size_t> m_HandleToIndex{};
-	std::unordered_map<size_t, SubscriberHandle> m_IndexToHandle{};
+    std::vector<size_t> m_HandleToIndex{};
+    std::vector<SubscriberHandle> m_IndexToHandle{};
 
-	EventType m_SavedEvent{};
+    std::vector<EventType> m_SavedEvents{};
 };
 
 template<typename EventType>
-auto CallbackContainer<EventType>::addCallback(CallbackType callback) -> SubscriberHandle {
+inline auto CallbackContainer<EventType>::addCallback(CallbackType callback) -> SubscriberHandle {
 	SubscriberHandle handle;
 	size_t newIndex = m_Callbacks.size();
 
@@ -52,6 +53,14 @@ auto CallbackContainer<EventType>::addCallback(CallbackType callback) -> Subscri
 		handle = m_FreeHandles.back();
 		m_FreeHandles.pop_back();
 	}
+
+    if (m_IndexToHandle.size() <= newIndex) {
+        m_IndexToHandle.resize(newIndex * 2 + 1);
+    }
+    if (m_HandleToIndex.size() <= handle) {
+        m_HandleToIndex.resize(handle * 2 + 1);
+    }
+
 	m_HandleToIndex[handle] = newIndex;
 	m_IndexToHandle[newIndex] = handle;
 
@@ -63,8 +72,8 @@ auto CallbackContainer<EventType>::addCallback(CallbackType callback) -> Subscri
 }
 
 template<typename EventType>
-void CallbackContainer<EventType>::removeCallback(SubscriberHandle handle) {
-	assert(m_HandleToIndex.find(handle) != m_HandleToIndex.end());
+inline void CallbackContainer<EventType>::removeCallback(SubscriberHandle handle) {
+	assert(m_HandleToIndex[handle] != -1);
 
 	size_t indexOfRemovedHandle = m_HandleToIndex[handle];
 	size_t indexOfLastElement = m_Callbacks.size() - 1;
@@ -79,21 +88,31 @@ void CallbackContainer<EventType>::removeCallback(SubscriberHandle handle) {
 		m_Callbacks.pop_back();
 	}
 
-	m_HandleToIndex.erase(handle);
-	m_IndexToHandle.erase(indexOfLastElement);
+	m_HandleToIndex[handle] = -1;
+	m_IndexToHandle[indexOfLastElement] = -1;
 	m_FreeHandles.emplace_back(handle);
 }
 
 template<typename EventType>
-void CallbackContainer<EventType>::save(const EventType& event) {
-	m_SavedEvent = event;
+inline void CallbackContainer<EventType>::save(const EventType& event) {
+	m_SavedEvents.emplace_back(event);
 }
 
 template<typename EventType>
-void CallbackContainer<EventType>::callSaved() const {
+inline void CallbackContainer<EventType>::callSaved() const {
+    if (m_SavedEvents.size() == 0) {
+        return;
+    }
 	for (auto& callback : m_Callbacks) {
-		callback(m_SavedEvent);
+        for (const auto& event : m_SavedEvents) {
+		    callback(event);
+        }
 	}
+}
+
+template<typename EventType>
+inline void CallbackContainer<EventType>::clearSaved() {
+    m_SavedEvents.clear();
 }
 
 class EventManager {
@@ -124,7 +143,7 @@ public:
 private:
 	template<typename EventType>
 	static inline CallbackContainer<EventType> s_Callbacks;
-	std::vector<const ICallbackContainer*> m_EventBus;
+	std::vector<ICallbackContainer*> m_EventBus;
 };
 
 template<typename EventType, typename Function>
@@ -167,10 +186,11 @@ void EventManager::publishBus(EventType&& event) {
 	m_EventBus.emplace_back(&s_Callbacks<EventType>);
 }
 
-
 inline void EventManager::pollEvents() {
-	for (const auto& callback : m_EventBus) {
+	for (auto& callback : m_EventBus) {
 		callback->callSaved();
+        callback->clearSaved();
 	}
+
 	m_EventBus.clear();
 }
